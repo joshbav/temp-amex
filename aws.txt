@@ -1,4 +1,0 @@
-eksctl create cluster --name joshbtest1 --region us-west-1 --zones=us-west-1a,us-west-1b --nodes 1 --node-type t3.xlarge --node-volume-size 60 --ssh-access --version=1.16 --tags owner=joshb --instance-prefix joshb --set-kubeconfig-context --nodegroup-name joshbtest1 --node-labels owner=joshb --ssh-public-key aws-personal
-
-eksctl delete cluster -n joshbtest1 -r us-west-1
-
