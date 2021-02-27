@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falcotest
+  labels:
+    app: falcotest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falcotest
+  template:
+    metadata:
+      labels:
+        app: falcotest
+    spec:
+      containers:
+      - name: nobody
+        image: joshbav/temp-amex
+        command: ['/bin/sleep' , '30000']

@@ -1,0 +1,29 @@
+# DOCKER IN DOCKER... DOESN'T WORK ON EKS 1.16, 
+#  SOMETHING ABOUT MOUNTING THE DOCKER SOCKET 
+
+apiVersion: v1
+kind: Pod
+metadata:
+    name: dind
+spec:
+    containers:
+      - name: dind
+        image: docker:dind
+        command: ['/bin/sleep' , '30000']
+        resources:
+            requests:
+                cpu: 1
+                memory: 512Mi
+        securityContext:
+            privileged: true
+        volumeMounts:
+          - name: hostdocker
+            mountPath: "/var/run/docker.sock"
+            subPath: "docker.sock"
+    volumes:
+      - name: hostdocker
+        hostPath:
+          path: "/var/run/docker.sock"
+          type: Socket
+
+

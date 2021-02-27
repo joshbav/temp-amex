@@ -1,0 +1,109 @@
+
+
+
+
+Made new image oshbav/amex:latest from
+FROM centos:8
+USER nobody
+
+./build # pushed it to dockerhub
+
+eksctl create cluster --name joshbtest1 --region us-west-1 --zones=us-west-1a,us-west-1b --nodes 1 --node-type t3.xlarge --node-volume-size 60 --ssh-access --version=1.16 --tags owner=joshb --instance-prefix joshb --set-kubeconfig-context --nodegroup-name joshbtest1 --node-labels owner=joshb --ssh-public-key aws-personal
+
+made nobody deployment that runs it and only does a sleep command as first test of falco rule
+
+rules editor
+   copy open_write to amex_open_write - edit it
+   copy write_etc_common to be amex_write_etc_common - edit it to use amex_open_write
+
+rules library
+    write below etc, copy, rename, change condition to be amex_, 
+
+runtime policies
+   create new policy named amex write below etc, 
+   add description,
+   scope to containers only (no namespaces yet)
+   import amex... from falco library, delete existing falco rule
+
+loaded sysdig agent to eks cluster:
+
+1. kubectl create ns sysdig-agent
+
+2. FILL IN: kubectl -n sysdig-agent create secret generic sysdig-agent --from-literal=access-key=<your sysdig access key>
+
+3. kubectl apply -n sysdig-agent -f https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-clusterrole.yaml
+
+4. kubectl create serviceaccount sysdig-agent -n sysdig-agent
+
+5. kubectl create clusterrolebinding sysdig-agent --clusterrole=sysdig-agent --serviceaccount=sysdig-agent:sysdig-agent
+
+6. curl -sSLO https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-configmap.yaml
+
+7. vi sysdig-agent-configmap.yaml  and add the correct collector URL per: https://docs.sysdig.com/en/saas-regions-and-ip-ranges.html
+
+8. kubectl apply -n sysdig-agent -f sysdig-agent-configmap.yaml
+
+7. kubectl apply -n sysdig-agent -f https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-daemonset-v2.yaml
+
+8. curl -sSLO https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-configmap.yaml
+
+9. vi sysdig-image-analyzer-configmap.yaml   and add the endpoint URL per: https://docs.sysdig.com/en/saas-regions-and-ip-ranges.html
+
+10. kubectl apply -n sysdig-agent -f sysdig-image-analyzer-configmap.yaml
+
+11: kubectl apply -n sysdig-agent -f https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-daemonset.yaml
+
+# done installing agent
+
+k apply -f nobody.yaml
+k get pods 
+k exec -it falcotest-6c88bcc788-8m2xh -- bash
+touch /etc/blah
+verify in secure's events screen that it fired (did first time)
+
+k delete -f nobody.yaml
+
+I tried using the dind pod but got a file mount error with the docker socket,
+  decided to just use docker for now and come back to this.
+
+
+ssh -i ~/aws-personal.pem ec2-user@ec2-3-101-131-45.us-west-1.compute.amazonaws.com
+    ls -l /var/run/docker.sock   to see the docker socket was there, it was
+    docker run --privileged -it  -v /var/run/docker.sock:/var/run/docker.sock docker:dind sh
+    touch /etc/blah
+    verify in secure events that it showed up (it did)
+
+    mkdir a && cd a && echo test>test.conf && echo "FROM hello-world" > Dockerfile && echo "ADD test.conf /etc" >> Dockerfile && docker build -t test . && docker run test
+ 
+    verify in secure events that it showed up (it did NOT, THAT'S A PROBLEM)
+
+    exit
+
+    back in aws host now
+    rm -rf a
+    mkdir a && cd a && echo test>test.conf && echo "FROM docker:dind" > Dockerfile && echo "ADD test.conf /etc" >> Dockerfile && echo "RUN /bin/sleep 120" >> Dockerfile
+    
+    (startup up another ssh session, sudo bash, come back to this session)
+    
+    (startup up third ssh session,  come back to this session)
+    
+    docker build -t test . --no-cache
+    switch to second terminal session
+        cd to /var/run/docker/tmp
+        ls
+        saw files but not /etc
+        ls /var/lib/docker/tmp/
+            didnt see them there either
+        
+    switched to third terminal session
+        docker ps
+        saw new container being built
+        waited for build to complete
+        docker images (saw test image)
+
+Conclusion: The docker build temp container is not seen by falco
+
+eksctl delete cluster -n joshbtest1 -r us-west-1    
+
+
+
