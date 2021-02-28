@@ -111,4 +111,51 @@ next step: get a second opinion
 eksctl delete cluster -n joshbtest1 -r us-west-1    
 
 
+*******
+hunting source code for docker build, hints:
+https://github.com/docker/engine/blob/master/docs/api/v1.41.yaml#L7213
+
+Build()  mentioned in engine/integration-cli/cli/cli.go
+ so now lets find all files not containing test in their name and search their contents for Build(
+ find . -type f \( ! -iname "*test*" \) | xargs grep -i "Build("
+
+client/image_build.go seems the most promising.
+  func (cli *Client) ImageBuild(     seems to be the ideal focus
+  so it send to the deamon cli.postRaw(ctx, "/build"....
+
+now on to find the daemon code where the build happens...
+  grep "postRaw" daemon didn't find anything
+
+daemon/images/image_builder.go
+  func (i *ImageService) CreateImage(  looks promising
+  it seems to call imageStore.Create(config) which makes the image,
+  then what I assume is the created image is returned.
+  So I need to focus on imageStore.Create
+    that turns out to be defined as image.Store in ImageService strut
+    and I think I can find that in https://github.com/moby/moby/blob/master/image/image.go
+    yes its at https://github.com/moby/moby/blob/master/image/image.go#L66
+       it contains V1Image which is just image config info
+       it also contains rawJSON []byte  which I'm wondering might be the filesystem/image being built and that's what we're hunting for
+       below I see // MarshalJSON serializes the image to JSON. which supports that idea
+       seeing the .rawJSON used as the return in NewFromJSON() also kinda supports this, see https://github.com/moby/moby/blob/master/image/image.go#L250
+       
+
+https://github.com/moby/moby/blob/master/image/fs.go  is also interesting but is it used for docker builds though?
+
+https://github.com/moby/moby/blob/master/image/store.go  says it's an interface for creating and accessing images, so that's interesting, but is it used during docker build or docker run/pull? "creating images" could mean creating the ephemeral filesystem after extracting the layers and combining them....
+
+
+
+
+  
+
+  
+  so now to find that
+
+
+
+
+
+
+
 
