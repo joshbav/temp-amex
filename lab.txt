@@ -106,7 +106,6 @@ ssh -i ~/aws-personal.pem ec2-user@ec2-3-101-131-45.us-west-1.compute.amazonaws.
         docker images (saw test image)
 
 Conclusion: The docker build temp container is not seen by falco
-next step: get a second opinion
 
 eksctl delete cluster -n joshbtest1 -r us-west-1    
 
@@ -144,12 +143,6 @@ https://github.com/moby/moby/blob/master/image/fs.go  is also interesting but is
 
 https://github.com/moby/moby/blob/master/image/store.go  says it's an interface for creating and accessing images, so that's interesting, but is it used during docker build or docker run/pull? "creating images" could mean creating the ephemeral filesystem after extracting the layers and combining them....
 
-
-
-
-  
-
-  
   so now to find that
 
 
